@@ -3,6 +3,8 @@ library(dashHtmlComponents)
 library(dashBootstrapComponents)
 library(tidyverse)
 library(purrr)
+library(plotly)
+library(ggthemes)
 
 app <- Dash$new(external_stylesheets = dbcThemes$BOOTSTRAP)
 
@@ -69,13 +71,19 @@ filter_panel = list(
     htmlBr()
 )
 
+# plots layout
+plot_body = list(
+    dccGraph("bar_plot")
+)
+
 # Page layout
 page_layout <- htmlDiv(
     className="page_layout",
     children=list(
         dbcRow(htmlBr()),
         dbcRow(
-                dbcCol(filter_panel, className="panel", width=3)
+            list(dbcCol(filter_panel, className = "panel", width = 3),
+                 dbcCol(plot_body, className = "body"))
         )
     )
 )
@@ -83,16 +91,40 @@ page_layout <- htmlDiv(
 # Overall layout
 app$layout(htmlDiv(id="main", className="app", children=page_layout))
 
-# function
+# functions
 app$callback(
     output("summary", "children"),
     list(input("neighbourhood_input", "value"),
     input("year_radio", "value")),
     function(neighbourhood, year) {
-        data <- data %>%
+        data_summary <- data %>%
             filter(Neighborhood == neighbourhood, YEAR == year)
-        nrow(data)
+        nrow(data_summary)
     }
 )
 
-app$run_server(host = '0.0.0.0')
+app$callback(
+    output("bar_plot", 'figure'),
+    list(input('neighbourhood_input', 'value'),
+         input("year_radio", "value")),
+    function(neighbourhood, year){
+        bar_data <- data %>%
+            filter(Neighborhood == neighbourhood, YEAR == year) %>%
+            add_count(Type)
+        bar_chart <-  bar_data %>%
+            ggplot(aes(x = reorder(Type, -n), fill = Type)) +
+            geom_bar() + 
+            labs(title = "Crimes by Type", x = "Type of Crime", y = "Number of Crimes") +
+            theme(
+                plot.title = element_text(face = "bold", size = 16),
+                axis.title = element_text(face = "bold", size = 12),
+                axis.text.x=element_blank()
+            ) +
+            scale_fill_brewer(palette="YlOrRd")
+        
+        ggplotly(bar_chart + aes(text = n), tooltip = c("Type", "n"), width = 800, height = 500)
+    }
+)
+
+# app$run_server(host = '0.0.0.0')
+app$run_server(debug = T)
