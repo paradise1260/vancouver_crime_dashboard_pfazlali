@@ -6,7 +6,7 @@ library(purrr)
 
 app <- Dash$new(external_stylesheets = dbcThemes$BOOTSTRAP)
 
-data <- read_csv('processed_df.csv')
+data <- read_csv('data/processed_df.csv')
 
 opt_dropdown_neighbourhood <- unique(data$Neighborhood) %>%
     map(function(col) list(label = col, value = col))
